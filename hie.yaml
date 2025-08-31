@@ -1,0 +1,10 @@
+cradle:
+  cabal:
+    - path: ./src
+      component: lib:kvmSwitch
+
+    - path: ./app
+      component: exe:kvmSwitch
+
+    - path: ./test
+      component: test:"kvmSwitch"-test
