@@ -7,4 +7,4 @@ cradle:
       component: exe:kvmSwitch
 
     - path: ./test
-      component: test:"kvmSwitch"-test
+      component: test:kvmSwitch-test

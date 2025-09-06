@@ -16,15 +16,29 @@ common warnings
 
 library
     import:           warnings
-    exposed-modules:  MyLib
+    exposed-modules:  
+        MyLib
+      , Config
+      , Scan
+      , EitherDo.Edo
+      , GPIO.Types
+      , GPIO.Error
+      , GPIO.PinMap
+      , GPIO.FFI
+      , GPIO.Libgpiod
+
     -- other-modules:
     -- other-extensions:
     build-depends:    
         base 
       , text
+      , yaml
+      , containers
 
     hs-source-dirs:   src
     default-language: GHC2021
+    pkgconfig-depends: libgpiod >= 1.6 && < 1.7
+    extra-libraries:   gpiod
 
 executable kvmSwitch
     import:           warnings
@@ -34,6 +48,10 @@ executable kvmSwitch
     build-depends:
         base 
       , kvmSwitch
+      , yaml
+      , directory
+      , filepath
+      , containers
       
     hs-source-dirs:   app
     default-language: GHC2021

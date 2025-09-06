@@ -1,4 +1,15 @@
-module MyLib (someFunc) where
+module MyLib
+  ( module GPIO.Types
+  , module GPIO.Libgpiod
+  , module GPIO.PinMap
+  , module GPIO.Error
+  , module Config
+  , module Scan
+  ) where
 
-someFunc :: IO ()
-someFunc = putStrLn "someFunc"
+import           Config
+import           GPIO.Error
+import           GPIO.Libgpiod
+import           GPIO.PinMap
+import           GPIO.Types
+import           Scan
