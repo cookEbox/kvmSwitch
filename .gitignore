@@ -1,0 +1,34 @@
+# Haskell build output
+/dist-newstyle/
+/*.o
+/*.hi
+/*.dyn_o
+/*.dyn_hi
+/.ghc.environment.*
+
+# Cabal sandbox (old style, just in case)
+/cabal.sandbox.config
+/.cabal-sandbox/
+
+# Nix / direnv
+/.direnv/
+/result
+/result-*
+
+# GHCi / HLS
+/.ghci
+/.hie
+/.hie-bios
+/.hie-bios-cache
+/.ghcide
+
+# Editor / OS cruft
+*~
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Backup or scratch files
+/src/OldMyLib.hs
+
