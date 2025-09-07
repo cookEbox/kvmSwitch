@@ -3,6 +3,7 @@
 
 module EitherDo.Edo where
 
+import qualified Prelude as P
 import           Prelude ( Either (..)
                          , IO
                          , const
@@ -13,7 +14,6 @@ import           Prelude ( Either (..)
                          , (.)
                          , (<$>) 
                          )
-import qualified Prelude as P
 
 type IOEither e a = IO (Either e a)
 
