@@ -32,3 +32,6 @@ Thumbs.db
 # Backup or scratch files
 /src/OldMyLib.hs
 
+# zip 
+*.zip
+*.closure
