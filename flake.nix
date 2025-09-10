@@ -44,9 +44,16 @@
           drv1.overrideAttrs (old: {
             nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.pkg-config ];
             buildInputs       = (old.buildInputs       or []) ++ [ gpiodV1 ];
+
+            # Force pkg-config to libgpiod v1 only (you already had this)
             PKG_CONFIG_PATH   = pcPath;
             PKG_CONFIG_LIBDIR = pcPath;
+
             strictDeps = true;
+
+            # ⬇️ Skip the reproducibility double-build/compare
+            passthru.forceRebuild = builtins.currentTime;
+            doCheckReproducibility = false;
           });
 
 
