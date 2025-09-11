@@ -43,6 +43,14 @@ EOF
 sudo systemctl restart nix-daemon || sudo systemctl start nix-daemon
 ```
 
+### Important: make nix tools visible to non-login SSH sessions
+This step is often missed and will break `nix copy` if omitted:
+
+```bash
+sudo ln -sf /nix/var/nix/profiles/default/bin/nix       /usr/local/bin/nix
+sudo ln -sf /nix/var/nix/profiles/default/bin/nix-store /usr/local/bin/nix-store
+```
+
 ---
 
 ## 3. Copy the closure across
