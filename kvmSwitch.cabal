@@ -21,7 +21,6 @@ library
         MyLib
       , Config
       , Scan
-      , EitherDo.Edo
       , GPIO.Types
       , GPIO.Error
       , GPIO.PinMap
@@ -35,6 +34,7 @@ library
       , text
       , yaml
       , containers
+      , edo
 
     hs-source-dirs:   src
     default-language: GHC2021
@@ -53,6 +53,7 @@ executable kvmSwitch
       , directory
       , filepath
       , containers
+      , edo
       
     hs-source-dirs:   app
     default-language: GHC2021

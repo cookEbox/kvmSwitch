@@ -5,10 +5,10 @@ module Main where
 import           Data.Yaml          (decodeFileThrow)
 import           EitherDo.Edo       (IOEither, ok, traverseE_)
 import qualified EitherDo.Edo       as E
-import           Foreign            ((.|.))
 import           MyLib
 import           System.Directory   (getHomeDirectory)
 import           System.FilePath    ((</>))
+import System.IO (hSetBuffering, BufferMode(..), stdout, stderr)
 
 setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
 setup cfg = E.do
@@ -21,13 +21,19 @@ setup cfg = E.do
   where
     getPinPtrsE c ps = sequence <$> mapM (getLineE c) ps
     outputE          = requestOutputE "rows" False . ptr
-    inputE           = requestInputE "columns" (biasPullUp .|. activeLow) . ptr
+    inputE           = requestInputE "columns" biasPullDown . ptr
 
+-- need to use STM to act as a store for last clicked button 
+-- and read of that everytime it changes
 main :: IO ()
 main = do
+  hSetBuffering stdout NoBuffering
+  hSetBuffering stderr NoBuffering
+  putStrLn "[kvmSwitch] starting…"
   home <- getHomeDirectory
   config <- decodeFileThrow $ home </> ".config/kvm/keys.yml"
   validatePinMap config
+  print config
   sl <- E.do
     (chip, outs, ins) <- setup config
     scanLoop chip outs ins

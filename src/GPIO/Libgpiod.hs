@@ -18,7 +18,7 @@ expectOk what act = do
   rc <- act
   pure $ if rc == 0 then Right () else Left (StatusErr what rc)
 
-openChipE :: String -> IO (Either GpioError Chip)
+openChipE :: String -> IOEither GpioError Chip
 openChipE name =
   withCString name $ \cname ->
     expectNonNull "gpiod_chip_open_by_name" (c_gpiod_chip_open_by_name cname)
@@ -44,7 +44,7 @@ getValueE line = do
     EQ -> Right False
     GT -> Right True
 
-setValueE :: Ptr CGpioLine -> Bool -> IO (Either GpioError ())
+setValueE :: Ptr CGpioLine -> Bool -> IOEither GpioError ()
 setValueE line b = do
   rc <- c_gpiod_line_set_value line (fromBool b)
   pure (toEitherUnit "gpiod_line_set_value" rc)

@@ -4,10 +4,10 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
+    edo.url = "github:cookEbox/edo";
   };
 
-  outputs = { self, nixpkgs, flake-utils }:
-    # Host(s) you actually develop on:
+  outputs = { self, nixpkgs, flake-utils, edo }:
     flake-utils.lib.eachSystem [ "x86_64-linux" ] (system:
       let
         pkgs = import nixpkgs { inherit system; };
@@ -27,14 +27,20 @@
             overrides = self': super: { };
           };
 
-        
+        withEdo = pkgsU:
+          pkgsU.haskellPackages.override {
+            overrides = self': super: {
+              edo = self'.callCabal2nix "edo" edo { };
+            };
+          }; 
+
         mkKvmWith = pkgsU:
           let
-            hp0  = pkgsU.haskellPackages;
+            hp0  = withEdo pkgsU;
             gpiodV1 = (pkgsU.libgpiod1 or pkgsU.libgpiod_1);
             drv0 = hp0.callCabal2nix packageName self {
-              libgpiod = gpiodV1;  # for pkg-config-depends: libgpiod
-              gpiod    = gpiodV1;  # for extra-libraries: gpiod
+              libgpiod = gpiodV1;
+              gpiod    = gpiodV1;
             };
 
             drv1 = pkgsU.haskell.lib.markUnbroken (pkgsU.haskell.lib.doJailbreak drv0);
@@ -44,22 +50,17 @@
           drv1.overrideAttrs (old: {
             nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.pkg-config ];
             buildInputs       = (old.buildInputs       or []) ++ [ gpiodV1 ];
-
-            # Force pkg-config to libgpiod v1 only (you already had this)
             PKG_CONFIG_PATH   = pcPath;
             PKG_CONFIG_LIBDIR = pcPath;
-
             strictDeps = true;
-
-            # ⬇️ Skip the reproducibility double-build/compare
             passthru.forceRebuild = builtins.currentTime;
             doCheckReproducibility = false;
           });
 
 
         kvmNative  = mkKvmWith pkgs;
-        kvmAarch64 = mkKvmWith pkgsAarch64; # Pi 64-bit OS
-        kvmArmv7l  = mkKvmWith pkgsArmv7l;  # Pi 32-bit OS (common)
+        kvmAarch64 = mkKvmWith pkgsAarch64;
+        kvmArmv7l  = mkKvmWith pkgsArmv7l;
 
         gpiodV1 = pkgs.libgpiod1 or pkgs.libgpiod_1;
       in {
@@ -68,7 +69,6 @@
         packages."${packageName}-aarch64" = kvmAarch64;
         packages."${packageName}-armv7l"  = kvmArmv7l;
 
-        # nix run .#kvmSwitch
         apps =
           let app = flake-utils.lib.mkApp { drv = kvmNative; };
           in {
