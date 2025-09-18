@@ -1,50 +1,42 @@
-{ pkgs }:
+{ pkgs
+, defaultCache ? "nixcooke"
+, defaultHost  ? "nick@192.168.1.116"
+, defaultAttr  ? "packages.x86_64-linux.kvmSwitch-aarch64"
+, defaultOut   ? "/tmp/kvm.path"
+}:
 let
   app = pkgs.writeShellApplication {
     name = "copy-to-pi";
     runtimeInputs = [
-      pkgs.cachix
-      pkgs.openssh
-      pkgs.coreutils
-      pkgs.gawk
+      pkgs.nix         # nix build
+      pkgs.cachix      # cachix push
+      pkgs.openssh     # scp
+      pkgs.coreutils   # readlink
     ];
     text = ''
       set -euo pipefail
-      CACHE="''${CACHE:-nixcooke}"
-      HOST="''${HOST:-nick@192.168.1.116}"
-      ATTR="''${ATTR:-packages.x86_64-linux.kvmSwitch-aarch64}"  # cross-built aarch64 output
-      BIN_NAME="''${BIN_NAME:-kvmSwitch}"
-      RESTART_CMD="''${RESTART_CMD:-}"  # e.g. "systemctl --user restart kvmSwitch.service"
 
-      echo "▶︎ Building $ATTR …"
+      CACHE="''${CACHE:-${defaultCache}}"
+      HOST="''${HOST:-${defaultHost}}"
+      ATTR="''${ATTR:-${defaultAttr}}"
+      PATH_FILE="''${PATH_FILE:-${defaultOut}}"
+
+      echo "Building ''${ATTR} ..."
       nix build ".#''${ATTR}"
       OUT="$(readlink -f result)"
-      echo "• store path: $OUT"
+      echo "Output path: ''${OUT}"
 
-      echo "▶︎ Pushing to Cachix ($CACHE) …"
-      cachix push "$CACHE" "$OUT"
+      echo "Pushing to Cachix (''${CACHE}) ..."
+      cachix push "''${CACHE}" "''${OUT}"
 
-      echo "▶︎ Removing old $BIN_NAME from $HOST profile (if any) …"
-      ssh "$HOST" '
-        set -e
-        idxs=$(nix profile list | awk "/'"$BIN_NAME"'/ {print \$1}")
-        if [ -n "$idxs" ]; then
-          nix profile remove $idxs
-          echo "• removed indices: $idxs"
-        else
-          echo "• none to remove"
-        fi
-      '
+      echo "Writing local path file: ''${PATH_FILE}"
+      printf '%s\n' "''${OUT}" > "''${PATH_FILE}"
 
-      echo "▶︎ Installing new $BIN_NAME on $HOST …"
-      ssh "$HOST" "nix profile add '$OUT' && echo '✓ installed'; command -v '$BIN_NAME' >/dev/null && $BIN_NAME --version || true"
+      echo "Copying path file to Pi: ''${HOST}:''${PATH_FILE}"
+      scp "''${PATH_FILE}" "''${HOST}:''${PATH_FILE}"
 
-      if [ -n "$RESTART_CMD" ]; then
-        echo "▶︎ Restarting service on $HOST: $RESTART_CMD"
-        ssh "$HOST" "$RESTART_CMD" || echo "• restart command failed (non-fatal)"
-      fi
-
-      echo "✅ Done."
+      echo "Done. On the Pi run:"
+      echo "  nix profile add \"\$(cat ''${PATH_FILE})\""
     '';
   };
 in

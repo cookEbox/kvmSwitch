@@ -153,7 +153,7 @@ startScanner chip rows cols scanUS debounceMS = E.do
   E.ok outVar
 
 validatePinMap :: Config -> IO ()
-validatePinMap (Config rs ws) = do
+validatePinMap (Config _ rs ws) = do
   let missing = filter (`notMember` pinMap) (rs<>ws)
   if null missing
   then putStrLn "✅ All pins mapped correctly"
