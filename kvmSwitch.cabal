@@ -35,6 +35,11 @@ library
       , yaml
       , containers
       , edo
+      , stm
+      , clock
+      , filepath 
+      , directory
+      , time
 
     hs-source-dirs:   src
     default-language: GHC2021
@@ -54,6 +59,7 @@ executable kvmSwitch
       , filepath
       , containers
       , edo
+      , stm
       
     hs-source-dirs:   app
     default-language: GHC2021

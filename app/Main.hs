@@ -2,14 +2,18 @@
 
 module Main where
 
-import           Data.Yaml          (decodeFileThrow)
-import           EitherDo.Edo       (IOEither, ok, traverseE_)
-import qualified EitherDo.Edo       as E
+import           Control.Concurrent.STM (atomically, takeTMVar)
+import           Control.Monad          (forever)
+import           Data.Yaml              (decodeFileThrow)
+import           EitherDo.Edo           (IOEither, ok, traverseE_)
+import qualified EitherDo.Edo           as E
 import           MyLib
-import           System.Directory   (getHomeDirectory)
-import           System.FilePath    ((</>))
-import System.IO (hSetBuffering, BufferMode(..), stdout, stderr)
+import           System.Directory       (getHomeDirectory)
+import           System.FilePath        ((</>))
+import           System.IO              (BufferMode (..), hSetBuffering, stderr,
+                                         stdout)
 
+-- TODO: Add gpiochip0 to config as we already pass it here
 setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
 setup cfg = E.do
   chip <- openChipE "gpiochip0"
@@ -23,8 +27,7 @@ setup cfg = E.do
     outputE          = requestOutputE "rows" False . ptr
     inputE           = requestInputE "columns" biasPullDown . ptr
 
--- need to use STM to act as a store for last clicked button 
--- and read of that everytime it changes
+-- TODO: Move scanTimee and debounceTime to a Constants directory
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -36,8 +39,9 @@ main = do
   print config
   sl <- E.do
     (chip, outs, ins) <- setup config
-    scanLoop chip outs ins
+    startScanner chip outs ins 3000 3
   case sl of
-    Left err      -> putStrLn $ "Error: " <>  show err
-    Right Nothing -> pure ()
-    Right key     -> putStrLn $ "Key pressed: " <> show key
+    Left err    -> putStrLn $ "Error: " <> show err
+    Right tmvar -> forever $ do
+      key <- atomically $ takeTMVar tmvar
+      putStrLn $ "Key pressed: " <> show key 
