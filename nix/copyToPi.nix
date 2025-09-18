@@ -1,22 +1,18 @@
 { pkgs
-, defaultCache     ? "nixcooke"
-, defaultHost      ? "nick@192.168.1.116"
-, defaultAttr      ? "packages.x86_64-linux.kvmSwitch-aarch64"
-, defaultOut       ? "/tmp/kvm.path"
-, defaultInstaller ? "/usr/local/bin/kvm-install.sh"
-, defaultSSHOpts   ? "-o StrictHostKeyChecking=accept-new"
+, defaultCache ? "nixcooke"
+, defaultHost  ? "nick@192.168.1.116"
+, defaultAttr  ? "packages.x86_64-linux.kvmSwitch-aarch64"
+, defaultOut   ? "/tmp/kvm.path"
 }:
 let
-  # keep your installer in repo at nix/install.sh
   installSrc = ./install.sh;
-
   app = pkgs.writeShellApplication {
     name = "copy-to-pi";
     runtimeInputs = [
-      pkgs.nix
-      pkgs.cachix
-      pkgs.openssh
-      pkgs.coreutils
+      pkgs.nix         # nix build
+      pkgs.cachix      # cachix push
+      pkgs.openssh     # scp
+      pkgs.coreutils   # readlink
     ];
     text = ''
       set -euo pipefail
@@ -25,33 +21,26 @@ let
       HOST="''${HOST:-${defaultHost}}"
       ATTR="''${ATTR:-${defaultAttr}}"
       PATH_FILE="''${PATH_FILE:-${defaultOut}}"
-      INSTALLER="''${INSTALLER:-${defaultInstaller}}"
-      SSH_OPTS="''${SSH_OPTS:-${defaultSSHOpts}}"
 
-      echo "Building .#''${ATTR} ..."
-      OUT="$(nix build ".#''${ATTR}" --print-out-paths)"
+      echo "Building ''${ATTR} ..."
+      nix build ".#''${ATTR}"
+      OUT="$(readlink -f result)"
       echo "Output path: ''${OUT}"
 
       echo "Pushing to Cachix (''${CACHE}) ..."
       cachix push "''${CACHE}" "''${OUT}"
 
-      echo "Copying store path to Pi via nix copy ..."
-      nix copy --to "ssh://''${HOST}" "''${OUT}"
+      echo "Writing local path file: ''${PATH_FILE}"
+      printf '%s\n' "''${OUT}" > "''${PATH_FILE}"
 
-      echo "Writing path on Pi: ''${PATH_FILE}"
-      ssh $SSH_OPTS "''${HOST}" "printf '%s\n' \"''${OUT}\" | sudo tee \"''${PATH_FILE}\" >/dev/null"
+      echo "Copying path file to Pi: ''${HOST}:''${PATH_FILE}"
+      scp "''${PATH_FILE}" "''${HOST}:''${PATH_FILE}"
 
-      echo "Ensuring installer on Pi at ''${INSTALLER} ..."
-      if ! ssh $SSH_OPTS "''${HOST}" "test -x \"''${INSTALLER}\""; then
-        echo "Installer not found; uploading…"
-        scp $SSH_OPTS ${installSrc} "''${HOST}:/tmp/kvm-install.sh"
-        ssh $SSH_OPTS "''${HOST}" "sudo mv /tmp/kvm-install.sh \"''${INSTALLER}\" && sudo chmod +x \"''${INSTALLER}\""
-      fi
+      echo "Copying installer to Pi and running it..."
+      scp ${installSrc} "''${HOST}:/tmp/kvm-install.sh"
+      ssh "''${HOST}" "chmod +x /tmp/kvm-install.sh && /tmp/kvm-install.sh"
 
-      echo "Running installer on Pi …"
-      ssh $SSH_OPTS "''${HOST}" "sudo \"''${INSTALLER}\""
-
-      echo "Done. Installed: ''${OUT}"
+      echo "Done."
     '';
   };
 in
