@@ -42,9 +42,7 @@
               libgpiod = gpiodV1;
               gpiod    = gpiodV1;
             };
-
             drv1 = pkgsU.haskell.lib.markUnbroken (pkgsU.haskell.lib.doJailbreak drv0);
-
             pcPath = pkgs.lib.makeSearchPath "lib/pkgconfig" [ gpiodV1 ];
           in
           drv1.overrideAttrs (old: {
@@ -63,6 +61,9 @@
         kvmArmv7l  = mkKvmWith pkgsArmv7l;
 
         gpiodV1 = pkgs.libgpiod1 or pkgs.libgpiod_1;
+
+        copyToPi = import ./nix/copyToPi.nix {inherit pkgs; };
+
       in {
         packages.${packageName}           = kvmNative;
         packages.default                  = kvmNative;
@@ -74,6 +75,10 @@
           in {
             default   = app;
             kvmSwitch = app;
+            copy-to-pi-aarch64 = {
+              type = "app";
+              program = "${copyToPi}/bin/copy-to-pi";
+            };
           };
 
         devShells.default = pkgs.mkShell {

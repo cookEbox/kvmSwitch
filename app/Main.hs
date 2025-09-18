@@ -16,7 +16,7 @@ import           System.IO              (BufferMode (..), hSetBuffering, stderr,
 -- TODO: Add gpiochip0 to config as we already pass it here
 setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
 setup cfg = E.do
-  chip <- openChipE "gpiochip0"
+  chip <- openChipE (chip cfg)
   lnOut <- getPinPtrsE chip (rows cfg)
   lnIn  <- getPinPtrsE chip (columns cfg)
   _ <- traverseE_ outputE lnOut

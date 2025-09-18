@@ -5,7 +5,8 @@ import           GHC.Generics (Generic)
 import           GPIO.Types   (Pin)
 
 data Config = Config
-  { rows    :: [Pin]
+  { chip    :: String
+  , rows    :: [Pin]
   , columns :: [Pin]
   } deriving (Show, Generic)
 
