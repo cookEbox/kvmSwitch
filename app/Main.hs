@@ -12,8 +12,10 @@ import           System.Directory       (getHomeDirectory)
 import           System.FilePath        ((</>))
 import           System.IO              (BufferMode (..), hSetBuffering, stderr,
                                          stdout)
+import Control.Exception (bracket)
+import OneWire.LedSpi (openSPI, rgb, renderSK6812, off, closeSPI)
+import Data.Word (Word32)
 
--- TODO: Add gpiochip0 to config as we already pass it here
 setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
 setup cfg = E.do
   chip <- openChipE (chip cfg)
@@ -27,7 +29,15 @@ setup cfg = E.do
     outputE          = requestOutputE "rows" False . ptr
     inputE           = requestInputE "columns" biasPullDown . ptr
 
--- TODO: Move scanTimee and debounceTime to a Constants directory
+led :: [Word32] -> IO () 
+led colour = bracket (openSPI "/dev/spidev0.0" 2_400_000) closeSPI $ \spi -> do 
+  let n = 1
+      grb = True 
+      s0 = replicate n off
+      s1 = colour
+  renderSK6812 spi grb s1
+
+-- TODO: Move scanTime and debounceTime to a Constants directory
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -45,3 +55,7 @@ main = do
     Right tmvar -> forever $ do
       key <- atomically $ takeTMVar tmvar
       putStrLn $ "Key pressed: " <> show key 
+      case key of 
+        Key P24 P18 -> led [rgb 255 0 0]
+        Key P24 P23 -> led [rgb 0 0 0]
+        _           -> putStrLn "Not a key"

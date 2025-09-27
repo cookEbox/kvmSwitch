@@ -26,11 +26,13 @@ library
       , GPIO.PinMap
       , GPIO.FFI
       , GPIO.Libgpiod
+      , OneWire.LedSpi
 
     -- other-modules:
     -- other-extensions:
     build-depends:    
         base 
+      , bytestring
       , text
       , yaml
       , containers
@@ -39,6 +41,7 @@ library
       , clock
       , filepath 
       , directory
+      , unix
       , time
 
     hs-source-dirs:   src
