@@ -30,7 +30,7 @@ setup cfg = E.do
     inputE           = requestInputE "columns" biasPullDown . ptr
 
 led :: [Word32] -> IO () 
-led colour = bracket (openSPI "/dev/spidev0.0" 2_400_000) closeSPI $ \spi -> do 
+led colour = bracket (openSPI "/dev/spidev0.0" 3_200_000) closeSPI $ \spi -> do 
   let n = 1
       grb = True 
       s0 = replicate n off

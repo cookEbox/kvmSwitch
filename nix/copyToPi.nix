@@ -36,6 +36,9 @@ let
       echo "Copying path file to Pi: ''${HOST}:''${PATH_FILE}"
       scp "''${PATH_FILE}" "''${HOST}:''${PATH_FILE}"
 
+      echo "Removing existing installer on Pi (if present)..."
+      ssh "''${HOST}" "rm -f /tmp/kvm-install.sh"
+
       echo "Copying installer to Pi and running it..."
       scp ${installSrc} "''${HOST}:/tmp/kvm-install.sh"
       ssh "''${HOST}" "chmod +x /tmp/kvm-install.sh && /tmp/kvm-install.sh"
