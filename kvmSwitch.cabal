@@ -13,7 +13,14 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall
-    default-extensions: ScopedTypeVariables
+    default-extensions: 
+      ImportQualifiedPost LambdaCase BlockArguments NumericUnderscores 
+      BinaryLiterals DerivingStrategies GeneralizedNewtypeDeriving 
+      DeriveFunctor DeriveFoldable DeriveTraversable DeriveGeneric 
+      StandaloneDeriving NamedFieldPuns TupleSections 
+      TypeOperators KindSignatures StandaloneKindSignatures 
+      ScopedTypeVariables BangPatterns ViewPatterns PatternSynonyms 
+      DuplicateRecordFields NoFieldSelectors OverloadedRecordDot
 
 library
     import:           warnings
@@ -27,6 +34,8 @@ library
       , GPIO.FFI
       , GPIO.Libgpiod
       , OneWire.LedSpi
+      , Keyboard.Keys
+      , Keyboard.LED
 
     -- other-modules:
     -- other-extensions:

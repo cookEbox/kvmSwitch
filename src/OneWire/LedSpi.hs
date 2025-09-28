@@ -9,7 +9,7 @@ module OneWire.LedSpi
 
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception          (bracketOnError)
-import           Control.Monad              (when)
+import           Control.Monad              as M (when, void)
 import           Data.Bits
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Internal   as BSI
@@ -58,13 +58,13 @@ openSPI dev hz = bracketOnError
   where fdToInt (Fd i) = i
 
 closeSPI :: Spi -> IO ()
-closeSPI = closeFd . spiFd
+closeSPI = closeFd . (.spiFd)
 
 renderSK6812 :: Spi -> Bool -> [Word32] -> IO ()
 renderSK6812 (Spi fd) rgbOrderGRB pixels = do
   let triples = concatMap (encodePixel rgbOrderGRB) pixels
       payload = pack3Bits triples
-  _ <- fdWrite fd payload
+  M.void $ fdWrite fd payload
   threadDelay 200
 
 encodePixel :: Bool -> Word32 -> [Bool]

@@ -36,12 +36,12 @@ usToNS us = fromIntegral us * 1_000
 
 isRowOnFor :: PinPtr -> [PinPtr] -> IOEither GpioError (Maybe Key)
 isRowOnFor row cols = E.do
-  _     <- setValueE (ptr row) True
+  _     <- setValueE row.ptr True
   _     <- Right <$> threadDelay 100
-  bools <- E.traverseE (getValueE . ptr) cols
-  _     <- setValueE (ptr row) False
+  bools <- E.traverseE (getValueE . (.ptr)) cols
+  _     <- setValueE row.ptr False
   E.ok $ listToMaybe
-          [ Key (pin row) (pin col)
+          [ Key row.pin col.pin
           | (col, pressed) <- zip cols bools
           , pressed
           ]
