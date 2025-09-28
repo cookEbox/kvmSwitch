@@ -19,7 +19,7 @@ import           System.FilePath        ((</>))
 import           System.IO              (BufferMode (..), hSetBuffering, stderr,
                                          stdout)
 
--- TODO: Move constants to config or donfig directory
+-- TODO: Move constants to config or config directory
 -- Temporary for testing led code
 type LedMap = Map LED Colour
 
