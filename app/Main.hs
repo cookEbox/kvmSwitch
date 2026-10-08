@@ -3,16 +3,16 @@
 module Main where
 
 import           Control.Concurrent.STM (TMVar, TQueue, atomically, putTMVar,
-                                         takeTMVar, tryTakeTMVar, writeTQueue)
+                                         tryTakeTMVar, writeTQueue)
+import           Control.Concurrent     (threadDelay)
 import           Control.Exception      (bracket)
-import           Control.Monad          (forever)
 import           Data.Map               (Map, findWithDefault, insert)
 import           Data.Word              (Word32)
 import           Data.Yaml              (decodeFileThrow)
 import           EitherDo.Edo           (IOEither, ok, traverseE_)
 import qualified EitherDo.Edo           as E
 import           MyLib
-import           OneWire.LedSpi         (closeSPI, off, openSPI, renderSK6812,
+import           OneWire.LedSpi         (closeSPI, openSPI, renderSK6812,
                                          rgb)
 import           System.Directory       (getHomeDirectory)
 import           System.FilePath        ((</>))
@@ -24,12 +24,9 @@ import           System.IO              (BufferMode (..), hSetBuffering, stderr,
 type LedMap = Map LED Colour
 
 ledSet :: [Word32] -> IO ()
-ledSet colour = bracket (openSPI "/dev/spidev0.0" 3_200_000) closeSPI $ \spi -> do
-  let n = 1
-      grb = True
-      s0 = replicate n off
-      s1 = colour
-  renderSK6812 spi grb s1
+ledSet colour = bracket (openSPI "/dev/spidev0.0" 2_400_000) closeSPI $ \spi -> do
+  let grb = True
+  renderSK6812 spi grb colour
 
 keyToLed :: Key -> LED
 keyToLed = undefined
@@ -68,6 +65,85 @@ setup cfg = E.do
     outputE          = requestOutputE "rows" False . (.ptr)
     inputE           = requestInputE "columns" biasPullDown . (.ptr)
 
+
+testLed1 :: [Word32]
+testLed1 = [ rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           ]
+
+testLed2 :: [Word32]
+testLed2 = [ rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 255 255 255 
+           , rgb 0 0 0 
+           ]
+
 -- TODO: Move scanTime and debounceTime to a Constants directory
 main :: IO ()
 main = do
@@ -83,10 +159,24 @@ main = do
     startScanner chip outs ins 3000 3
   case sl of
     Left err    -> putStrLn $ "Error: " <> show err
-    Right tmvar -> forever $ do
-      key <- atomically $ takeTMVar tmvar
-      putStrLn $ "Key pressed: " <> show key
-      case key of
-        Key P24 P18 -> ledSet [rgb 255 0 0]
-        Key P24 P23 -> ledSet [rgb 0 0 0]
-        _           -> putStrLn "Not a key"
+    Right _tmvar -> do
+      -- Temporary LED test: turn on the first four LEDs in white.
+      ledSet (replicate 36 (rgb 255 255 255))
+      threadDelay 5_000_000
+      ledSet (replicate 36 (rgb 0 0 0))
+      threadDelay 5_000_000
+      ledSet (replicate 36 (rgb 0 0 0))
+      ledSet testLed1
+      threadDelay 5_000_000
+      ledSet (replicate 36 (rgb 0 0 0))
+      ledSet testLed2
+      threadDelay 5_000_000
+
+      -- Key-press handling temporarily disabled while testing the LEDs.
+      -- forever $ do
+      --   key <- atomically $ takeTMVar tmvar
+      --   putStrLn $ "Key pressed: " <> show key
+      --   case key of
+      --     Key P24 P18 -> ledSet [rgb 255 0 0]
+      --     Key P24 P23 -> ledSet [rgb 0 0 0]
+      --     _           -> putStrLn "Not a key"

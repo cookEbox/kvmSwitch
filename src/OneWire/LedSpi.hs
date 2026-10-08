@@ -73,6 +73,7 @@ encodePixel grb w = concatMap encodeByte order
                   , (w `shiftR`  8) .&. 0xff
                   ,  w              .&. 0xff
                   )
+        -- The strip is using 24-bit RGB pixels, in GRB order here.
         order = if grb then [g,r,b] else [r,g,b]
 
 encodeByte :: Word32 -> [Bool]
@@ -100,4 +101,3 @@ pack3Bits bits = BSI.unsafeCreate outBytes $ \ptr -> do
     outBytes = (lenBits + 7) `div` 8
     remBits  = lenBits `mod` 8
     padByte  = foldl (\acc b -> (acc `shiftL` 1) .|. (if b then 1 else 0)) (0::Word8)
-
