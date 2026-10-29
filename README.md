@@ -1,3 +1,46 @@
+# KvmSwitch LED control
+
+KvmSwitch uses the native `rpi_ws281x` C library (`libws2811`) for all LED
+transmission. Nix builds the pinned C library from `nix/rpi-ws281x.nix` and
+supplies its headers, static archive, and `libws2811.pc` metadata to Cabal.
+No Python package or Python runtime is required.
+
+The public Haskell API is provided by `NeoPixel`:
+
+```haskell
+withPixelStrip, setPixel, showPixels, renderFrame
+clearPixels, setBrightness, pixelCount
+```
+
+The configured strip uses 36 RGB pixels, BCM GPIO10 (SPI0 MOSI), GRB colour
+ordering, and brightness 32/255. The native driver provides the 800 kHz
+transmission timing. `setPixel` changes the buffered native frame without
+transmitting; `showPixels`, `renderFrame`, and `clearPixels` transmit and
+return `Either LedError`. Native failures include the original driver error
+code and description.
+
+The opt-in hardware tests are:
+
+```bash
+kvmSwitch --led-self-test
+kvmSwitch --led-walking-test
+```
+
+Before running on a Pi, verify the model, SPI device, permissions, suitable
+LED power, and common ground:
+
+```bash
+tr -d '\0' < /proc/device-tree/model
+ls -l /dev/spidev0.0
+```
+
+SPI must already be enabled in the Pi configuration; the application does not
+modify boot configuration. The normal test command is:
+
+```bash
+kvmSwitch --led-self-test
+```
+
 # Deploying Nix-built binary to Raspberry Pi
 
 Assumptions:

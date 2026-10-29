@@ -1,5 +1,5 @@
 { mkDerivation, base, containers, directory, filepath, lib
-, libgpiod, text, yaml
+, libgpiod, libws2811, text, yaml
 }:
 mkDerivation {
   pname = "kvmSwitch";
@@ -8,7 +8,7 @@ mkDerivation {
   isLibrary = true;
   isExecutable = true;
   libraryHaskellDepends = [ base containers text yaml ];
-  libraryPkgconfigDepends = [ libgpiod ];
+  libraryPkgconfigDepends = [ libgpiod libws2811 ];
   executableHaskellDepends = [
     base containers directory filepath yaml
   ];

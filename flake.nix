@@ -38,20 +38,18 @@
           let
             hp0  = withEdo pkgsU;
             gpiodV1 = (pkgsU.libgpiod1 or pkgsU.libgpiod_1);
+            ws2811 = pkgsU.callPackage ./nix/rpi-ws281x.nix { };
             drv0 = hp0.callCabal2nix packageName self {
               libgpiod = gpiodV1;
               gpiod    = gpiodV1;
+              libws2811 = ws2811;
             };
             drv1 = pkgsU.haskell.lib.markUnbroken (pkgsU.haskell.lib.doJailbreak drv0);
-            pcPath = pkgs.lib.makeSearchPath "lib/pkgconfig" [ gpiodV1 ];
           in
           drv1.overrideAttrs (old: {
-            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgs.pkg-config ];
-            buildInputs       = (old.buildInputs       or []) ++ [ gpiodV1 ];
-            PKG_CONFIG_PATH   = pcPath;
-            PKG_CONFIG_LIBDIR = pcPath;
+            nativeBuildInputs = (old.nativeBuildInputs or []) ++ [ pkgsU.pkg-config ];
+            buildInputs       = (old.buildInputs       or []) ++ [ gpiodV1 ws2811 ];
             strictDeps = true;
-            passthru.forceRebuild = builtins.currentTime;
             doCheckReproducibility = false;
           });
 
@@ -92,6 +90,7 @@
             xdotool
             pkg-config
             gpiodV1
+            (pkgs.callPackage ./nix/rpi-ws281x.nix { })
             cachix
           ];
           shellHook = ''
@@ -102,4 +101,3 @@
         devShell = self.devShells.${system}.default;
       });
 }
-

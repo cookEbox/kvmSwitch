@@ -33,15 +33,17 @@ library
       , GPIO.PinMap
       , GPIO.FFI
       , GPIO.Libgpiod
-      , OneWire.LedSpi
+      , NeoPixel
+      , NeoPixel.Types
+      , NeoPixel.Error
       , Keyboard.Keys
       , Keyboard.LED
 
-    -- other-modules:
+    other-modules:
+        NeoPixel.FFI
     -- other-extensions:
     build-depends:    
         base 
-      , bytestring
       , text
       , yaml
       , containers
@@ -50,13 +52,14 @@ library
       , clock
       , filepath 
       , directory
-      , unix
       , time
 
     hs-source-dirs:   src
+    c-sources:        cbits/neopixel_bridge.c
+    include-dirs:     cbits
     default-language: GHC2021
-    pkgconfig-depends: libgpiod >= 1.6 && < 1.7
-    extra-libraries:   gpiod
+    pkgconfig-depends: libgpiod >= 1.6 && < 1.7, libws2811 >= 1.1 && < 1.2
+    extra-libraries:   gpiod, m
 
 executable kvmSwitch
     import:           warnings
