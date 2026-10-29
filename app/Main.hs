@@ -8,14 +8,11 @@ import           Control.Concurrent     (threadDelay)
 import           Control.Exception      (bracket)
 import           Data.Map               (Map, findWithDefault, insert)
 import           Data.Word              (Word32)
-import           Data.Yaml              (decodeFileThrow)
 import           EitherDo.Edo           (IOEither, ok, traverseE_)
 import qualified EitherDo.Edo           as E
 import           MyLib
-import           OneWire.LedSpi         (closeSPI, openSPI, renderSK6812,
+import           OneWire.LedSpi         (Spi, closeSPI, openSPI, renderSK6812,
                                          rgb)
-import           System.Directory       (getHomeDirectory)
-import           System.FilePath        ((</>))
 import           System.IO              (BufferMode (..), hSetBuffering, stderr,
                                          stdout)
 
@@ -23,10 +20,16 @@ import           System.IO              (BufferMode (..), hSetBuffering, stderr,
 -- Temporary for testing led code
 type LedMap = Map LED Colour
 
-ledSet :: [Word32] -> IO ()
-ledSet colour = bracket (openSPI "/dev/spidev0.0" 2_400_000) closeSPI $ \spi -> do
+ledSet :: Spi -> [Word32] -> IO ()
+ledSet spi colour = do
   let grb = True
   renderSK6812 spi grb colour
+
+showFrame :: Spi -> String -> [Word32] -> IO ()
+showFrame spi name frame = do
+  putStrLn $ "[kvmSwitch] displaying " <> name
+  ledSet spi frame
+  threadDelay 5_000_000
 
 keyToLed :: Key -> LED
 keyToLed = undefined
@@ -66,83 +69,15 @@ setup cfg = E.do
     inputE           = requestInputE "columns" biasPullDown . (.ptr)
 
 
+whiteLed, offLed :: Word32
+whiteLed = rgb 255 255 255
+offLed   = rgb 0 0 0
+
 testLed1 :: [Word32]
-testLed1 = [ rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           ]
+testLed1 = replicate 3 whiteLed <> [offLed] <> replicate 32 whiteLed
 
 testLed2 :: [Word32]
-testLed2 = [ rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 255 255 255 
-           , rgb 0 0 0 
-           ]
+testLed2 = concat (replicate 18 [whiteLed, offLed])
 
 -- TODO: Move scanTime and debounceTime to a Constants directory
 main :: IO ()
@@ -150,33 +85,17 @@ main = do
   hSetBuffering stdout NoBuffering
   hSetBuffering stderr NoBuffering
   putStrLn "[kvmSwitch] starting…"
-  home <- getHomeDirectory
-  config <- decodeFileThrow $ home </> ".config/kvm/keys.yml"
-  validatePinMap config
-  print config
-  sl <- E.do
-    (chip, outs, ins) <- setup config
-    startScanner chip outs ins 3000 3
-  case sl of
-    Left err    -> putStrLn $ "Error: " <> show err
-    Right _tmvar -> do
-      -- Temporary LED test: turn on the first four LEDs in white.
-      ledSet (replicate 36 (rgb 255 255 255))
-      threadDelay 5_000_000
-      ledSet (replicate 36 (rgb 0 0 0))
-      threadDelay 5_000_000
-      ledSet (replicate 36 (rgb 0 0 0))
-      ledSet testLed1
-      threadDelay 5_000_000
-      ledSet (replicate 36 (rgb 0 0 0))
-      ledSet testLed2
-      threadDelay 5_000_000
+  -- LED-only test: do not start the GPIO keyboard scanner while testing SPI.
+  bracket (openSPI "/dev/spidev0.0" 2_400_000) closeSPI $ \spi -> do
+    let allOff = replicate 36 (rgb 0 0 0)
+        allOn  = replicate 36 (rgb 255 255 255)
+    -- Display each frame for five seconds before moving to the next.
+    showFrame spi "all on" allOn
+    showFrame spi "all but LED 4 on" testLed1
+    showFrame spi "alternating LEDs off" testLed2
+    showFrame spi "all off" allOff
+    showFrame spi "all off (final latch)" allOff
+    showFrame spi "all off (Hellooooo)" allOff
 
-      -- Key-press handling temporarily disabled while testing the LEDs.
-      -- forever $ do
-      --   key <- atomically $ takeTMVar tmvar
-      --   putStrLn $ "Key pressed: " <> show key
-      --   case key of
-      --     Key P24 P18 -> ledSet [rgb 255 0 0]
-      --     Key P24 P23 -> ledSet [rgb 0 0 0]
-      --     _           -> putStrLn "Not a key"
+    -- Keep the SPI device open long enough to observe the final state.
+    threadDelay 60_000_000

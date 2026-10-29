@@ -9,7 +9,7 @@ module OneWire.LedSpi
 
 import           Control.Concurrent         (threadDelay)
 import           Control.Exception          (bracketOnError)
-import           Control.Monad              as M (when, void)
+import           Control.Monad              (when)
 import           Data.Bits
 import qualified Data.ByteString            as BS
 import qualified Data.ByteString.Internal   as BSI
@@ -64,7 +64,9 @@ renderSK6812 :: Spi -> Bool -> [Word32] -> IO ()
 renderSK6812 (Spi fd) rgbOrderGRB pixels = do
   let triples = concatMap (encodePixel rgbOrderGRB) pixels
       payload = pack3Bits triples
-  M.void $ fdWrite fd payload
+  written <- fdWrite fd payload
+  when (fromIntegral written /= BS.length payload) $
+    ioError (userError "SPI write was incomplete")
   threadDelay 200
 
 encodePixel :: Bool -> Word32 -> [Bool]
