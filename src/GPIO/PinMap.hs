@@ -33,6 +33,7 @@ pinMap = fromList
   , (P24, 24)
   , (P25, 25)
   , (P26, 26)
+  , (P27, 27)
   ]
 
 pinToBCM :: Pin -> Maybe CUInt
@@ -42,4 +43,3 @@ pinToBCM' :: Pin -> CUInt
 pinToBCM' p = case M.lookup p pinMap of
   Just bcm -> bcm
   Nothing  -> error ("Pin " <> show p <> " not mapped!")
-

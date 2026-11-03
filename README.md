@@ -41,6 +41,57 @@ modify boot configuration. The normal test command is:
 kvmSwitch --led-self-test
 ```
 
+## Keyboard GPIO assignments and future SPI conflict
+
+The isolated keyboard monitor uses these BCM GPIO assignments:
+
+| Line | BCM GPIO |
+| --- | ---: |
+| R1 | 4 |
+| R2 | 27 |
+| R3 | 9 |
+| R4 | 5 |
+| R5 | 13 |
+| C1 | 17 |
+| C2 | 22 |
+| C3 | 11 |
+| C4 | 6 |
+| C5 | 19 |
+| C6 | 26 |
+| C7 | 14 |
+| C8 | 15 |
+
+The repository source configuration is `config/keyboard.yaml`. Copy it to the
+Pi's XDG configuration directory (the deployment helper is intentionally not
+changed in this stage):
+
+```bash
+config_dir="${XDG_CONFIG_HOME:-$HOME/.config}/kvm"
+mkdir -p "$config_dir"
+cp config/keyboard.yaml "$config_dir/keyboard.yaml"
+```
+
+Run the raw monitor with either the default path or an explicit path:
+
+```bash
+kvmSwitch --key-monitor
+kvmSwitch --key-monitor /path/to/keyboard.yaml
+```
+
+It prints row and column BCM GPIO numbers for debounced press events. It does
+not use the NeoPixel driver or interpret logical key mappings. The scanner
+currently reports at most one detected key per scan and does not implement
+multi-key or ghosting handling.
+
+The NeoPixel driver uses SPI0, including BCM GPIO10 for MOSI. GPIO9 (SPI0 MISO)
+and GPIO11 (SPI0 SCLK) are currently assigned to the keyboard matrix, so they
+overlap SPI0 hardware functions even though LED data is connected through
+GPIO10. Before simultaneous keyboard scanning and LED control are implemented,
+move the keyboard connections on GPIO9 and GPIO11 to suitable unused GPIOs,
+update this YAML configuration to match the physical rewiring, and do not
+assume that these pins can safely be shared. GPIO14 and GPIO15 may also
+conflict with UART functionality when the UART is enabled.
+
 # Deploying Nix-built binary to Raspberry Pi
 
 Assumptions:

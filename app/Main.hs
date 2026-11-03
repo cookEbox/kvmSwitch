@@ -2,10 +2,11 @@
 
 module Main where
 
-import           Control.Concurrent.STM (TMVar, TQueue, atomically, putTMVar,
-                                         tryTakeTMVar, writeTQueue)
+import           Control.Concurrent.STM (TMVar, TQueue, atomically, orElse,
+                                         putTMVar, takeTMVar, tryTakeTMVar,
+                                         writeTQueue)
 import           Control.Concurrent     (threadDelay)
-import           Control.Exception      (SomeException, onException, try)
+import           Control.Exception      (SomeException, bracket, onException, try)
 import           Data.Map               (Map, findWithDefault, insert)
 import           EitherDo.Edo           (IOEither, ok, traverseE_)
 import qualified EitherDo.Edo           as E
@@ -16,6 +17,7 @@ import           NeoPixel               (LedError(..), PixelStrip, RGB(..),
                                          setPixel, showPixels, withPixelStrip)
 import           System.IO              (BufferMode (..), hSetBuffering, stderr, stdout)
 import           System.Environment     (getArgs)
+import           GPIO.FFI              (c_gpiod_chip_close)
 -- TODO: Move constants to config or config directory
 -- Temporary for testing led code
 type LedMap = Map LED Colour
@@ -47,15 +49,72 @@ updateLedMap key lstV takeFromV = do
 setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
 setup cfg = E.do
   chip <- openChipE cfg.chip
+  (lnOut, lnIn) <- setupLines chip cfg
+  ok (chip, lnOut, lnIn)
+
+setupLines :: Chip -> Config -> IOEither GpioError ([PinPtr], [PinPtr])
+setupLines chip cfg = E.do
   lnOut <- getPinPtrsE chip cfg.rows
   lnIn  <- getPinPtrsE chip cfg.columns
   _ <- traverseE_ outputE lnOut
   _ <- traverseE_ inputE lnIn
-  ok (chip, lnOut, lnIn)
+  ok (lnOut, lnIn)
   where
     getPinPtrsE c ps = sequence <$> mapM (getLineE c) ps
-    outputE          = requestOutputE "rows" False . (.ptr)
-    inputE           = requestInputE "columns" biasPullDown . (.ptr)
+    outputE row = requestOutputE ("row GPIO" <> show (pinToBCM' row.pin))
+      False row.ptr
+    inputE column = requestInputE ("column GPIO" <> show (pinToBCM' column.pin))
+      biasPullDown column.ptr
+
+setRowsLow :: [PinPtr] -> IOEither GpioError ()
+setRowsLow = traverseE_ (\row -> setValueE row.ptr False)
+
+monitorEvents :: TMVar Key -> TMVar GpioError -> IO ()
+monitorEvents keyVar errorVar = do
+  event <- atomically $
+    (Left <$> takeTMVar errorVar) `orElse` (Right <$> takeTMVar keyVar)
+  case event of
+    Left err -> printGpioError "keyboard scan failed" err
+    Right (Key row column) -> do
+      putStrLn $ "[kvmSwitch] key pressed: row=GPIO"
+        <> show (pinToBCM' row)
+        <> " column=GPIO"
+        <> show (pinToBCM' column)
+      monitorEvents keyVar errorVar
+
+printGpioError :: String -> GpioError -> IO ()
+printGpioError context err =
+  putStrLn $ "[kvmSwitch] ERROR: " <> context <> ": " <> show err
+
+runKeyMonitor :: FilePath -> IO ()
+runKeyMonitor configFile = do
+  loaded <- loadConfig configFile
+  case loaded of
+    Left err -> putStrLn $ "[kvmSwitch] ERROR: invalid keyboard configuration: " <> err
+    Right cfg -> do
+      opened <- openChipE cfg.chip
+      case opened of
+        Left err -> printGpioError "opening GPIO chip failed" err
+        Right chip -> bracket (pure chip) c_gpiod_chip_close $ \openChip -> do
+          configured <- setupLines openChip cfg
+          case configured of
+            Left err -> printGpioError "configuring keyboard GPIO failed" err
+            Right (rows, columns) -> do
+              scanner <- startScannerWithErrors openChip rows columns
+                defaultScanPeriodUS defaultDebounceMS
+              case scanner of
+                Left err -> printGpioError "starting keyboard scanner failed" err
+                Right (keys, errors, stopScanner) ->
+                  bracket (pure stopScanner)
+                    (\stop -> do
+                      stop
+                      lowered <- setRowsLow rows
+                      case lowered of
+                        Left err -> printGpioError "resetting keyboard rows failed" err
+                        Right () -> pure ())
+                    (\_ -> do
+                      putStrLn "[kvmSwitch] Keyboard monitor started"
+                      monitorEvents keys errors)
 
 
 ledCount :: Int
@@ -214,7 +273,7 @@ runHardwareTest frames = withPixelStrip ledConfig $ \strip -> do
 
 printUsage :: IO ()
 printUsage = putStrLn
-  "usage: kvmSwitch --led-self-test | --led-walking-test"
+  "usage: kvmSwitch --key-monitor [CONFIG] | --led-self-test | --led-walking-test"
 
 -- TODO: Move scanTime and debounceTime to a Constants directory
 main :: IO ()
@@ -224,6 +283,8 @@ main = do
   putStrLn "[kvmSwitch] starting…"
   args <- getArgs
   case args of
+    ["--key-monitor"] -> defaultConfigPath >>= runKeyMonitor
+    ["--key-monitor", configFile] -> runKeyMonitor configFile
     ["--led-self-test"] -> do
       result <- runHardwareTest standardFrames
       printResult result

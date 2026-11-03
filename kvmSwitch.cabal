@@ -9,7 +9,7 @@ maintainer:         Nick Cooke
 -- copyright:
 build-type:         Simple
 extra-doc-files:    CHANGELOG.md
--- extra-source-files:
+extra-source-files: config/keyboard.yaml
 
 common warnings
     ghc-options: -Wall
