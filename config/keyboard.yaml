@@ -1,7 +1,7 @@
 chip: gpiochip0
 
 rows:
-  - P4
+  - P25
   - P27
   - P9
   - P5
