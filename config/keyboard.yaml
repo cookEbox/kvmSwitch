@@ -3,14 +3,14 @@ chip: gpiochip0
 rows:
   - P25
   - P27
-  - P9
+  - P23
   - P5
   - P13
 
 columns:
   - P17
   - P22
-  - P11
+  - P24
   - P6
   - P19
   - P26
