@@ -1,13 +1,16 @@
 module Keyboard.LED 
   ( LED(..)
   , Colour(..)
+  , ledCount
+  , ledStripConfig
   , ledIndex
   , toRGB
   , colour32
   ) where
 
 import           Data.Word      (Word32)
-import           NeoPixel       (RGB(..), packRGB)
+import           NeoPixel       (PixelOrder(OrderGRB), RGB(..), StripConfig(..),
+                                 packRGB)
 
 data LED = LED1  | LED2  | LED3  | LED4
          | LED5  | LED6  | LED7  | LED8
@@ -21,6 +24,17 @@ data LED = LED1  | LED2  | LED3  | LED4
          deriving (Show, Eq, Ord)
 
 data Colour = White | Red | Blue | Green | Off deriving (Show, Eq)
+
+ledCount :: Int
+ledCount = 36
+
+ledStripConfig :: StripConfig
+ledStripConfig = StripConfig
+  { count = ledCount
+  , gpio = 10
+  , brightness = 32
+  , order = OrderGRB
+  }
 
 ledIndex :: LED -> Int
 ledIndex LED1  = 0

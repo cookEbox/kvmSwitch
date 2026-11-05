@@ -1,73 +1,24 @@
 {-# LANGUAGE QualifiedDo #-}
 
-module Main where
+module Main (main) where
 
-import           Control.Concurrent.STM (TMVar, TQueue, atomically, orElse,
-                                         putTMVar, takeTMVar, tryTakeTMVar,
-                                         writeTQueue)
+import           Control.Concurrent.STM (TMVar, atomically, orElse, takeTMVar)
 import           Control.Concurrent     (threadDelay)
-import           Control.Exception      (SomeException, bracket, onException, try)
-import           Data.Map               (Map, findWithDefault, insert)
-import           EitherDo.Edo           (IOEither, ok, traverseE_)
-import qualified EitherDo.Edo           as E
-import           MyLib
+import           Control.Exception      (SomeException, onException, try)
+import           Config                 (defaultConfigPath, loadConfig)
+import           GPIO.Error             (GpioError)
+import           GPIO.PinMap            (pinToBCM')
+import           GPIO.Types             (Key(..))
+import           Keyboard.Device       (KeyboardStartupError(..),
+                                         withKeyboardScanner)
+import           Keyboard.LED          (ledCount, ledStripConfig)
 import           NeoPixel               (LedError(..), PixelStrip, RGB(..),
-                                         PixelOrder(..), StripConfig(..),
                                          clearPixels, renderFrame, setBrightness,
                                          setPixel, showPixels, withPixelStrip)
 import           System.IO              (BufferMode (..), hSetBuffering, stderr, stdout)
 import           System.Environment     (getArgs)
-import           GPIO.FFI              (c_gpiod_chip_close)
--- TODO: Move constants to config or config directory
--- Temporary for testing led code
-type LedMap = Map LED Colour
 
-keyToLed :: Key -> LED
-keyToLed = undefined
-
-toggleLed :: Key -> Colour -> LedMap -> LedMap
-toggleLed key colour ledMap = do
-  let led = keyToLed key
-  case findWithDefault Off led ledMap of
-    Off -> insert led colour ledMap
-    _   -> insert led Off ledMap
-
-initialLedMap :: LedMap
-initialLedMap = undefined
-
-updateLedMap :: Key -> TMVar LedMap -> TQueue LedMap -> IO ()
-updateLedMap key lstV takeFromV = do
-  lst <- atomically $ tryTakeTMVar lstV
-  newLst <- case lst of
-              Nothing  -> pure initialLedMap
-              Just old -> pure $ toggleLed key White old
-  atomically $ do putTMVar lstV newLst
-                  writeTQueue takeFromV newLst
-
--- Start of Main
-
-setup :: Config -> IOEither GpioError (Chip, [PinPtr], [PinPtr])
-setup cfg = E.do
-  chip <- openChipE cfg.chip
-  (lnOut, lnIn) <- setupLines chip cfg
-  ok (chip, lnOut, lnIn)
-
-setupLines :: Chip -> Config -> IOEither GpioError ([PinPtr], [PinPtr])
-setupLines chip cfg = E.do
-  lnOut <- getPinPtrsE chip cfg.rows
-  lnIn  <- getPinPtrsE chip cfg.columns
-  _ <- traverseE_ outputE lnOut
-  _ <- traverseE_ inputE lnIn
-  ok (lnOut, lnIn)
-  where
-    getPinPtrsE c ps = sequence <$> mapM (getLineE c) ps
-    outputE row = requestOutputE ("row GPIO" <> show (pinToBCM' row.pin))
-      False row.ptr
-    inputE column = requestInputE ("column GPIO" <> show (pinToBCM' column.pin))
-      biasPullDown column.ptr
-
-setRowsLow :: [PinPtr] -> IOEither GpioError ()
-setRowsLow = traverseE_ (\row -> setValueE row.ptr False)
+data TestFrame = TestFrame String [RGB]
 
 monitorEvents :: TMVar Key -> TMVar GpioError -> IO ()
 monitorEvents keyVar errorVar = do
@@ -92,41 +43,20 @@ runKeyMonitor configFile = do
   case loaded of
     Left err -> putStrLn $ "[kvmSwitch] ERROR: invalid keyboard configuration: " <> err
     Right cfg -> do
-      opened <- openChipE cfg.chip
-      case opened of
-        Left err -> printGpioError "opening GPIO chip failed" err
-        Right chip -> bracket (pure chip) c_gpiod_chip_close $ \openChip -> do
-          configured <- setupLines openChip cfg
-          case configured of
-            Left err -> printGpioError "configuring keyboard GPIO failed" err
-            Right (rows, columns) -> do
-              scanner <- startScannerWithErrors openChip rows columns
-                defaultScanPeriodUS defaultDebounceMS
-              case scanner of
-                Left err -> printGpioError "starting keyboard scanner failed" err
-                Right (keys, errors, stopScanner) ->
-                  bracket (pure stopScanner)
-                    (\stop -> do
-                      stop
-                      lowered <- setRowsLow rows
-                      case lowered of
-                        Left err -> printGpioError "resetting keyboard rows failed" err
-                        Right () -> pure ())
-                    (\_ -> do
-                      putStrLn "[kvmSwitch] Keyboard monitor started"
-                      monitorEvents keys errors)
+      result <- withKeyboardScanner cfg $ \keys errors -> do
+        putStrLn "[kvmSwitch] Keyboard monitor started"
+        monitorEvents keys errors
+      case result of
+        Left err -> reportKeyboardStartupError err
+        Right () -> pure ()
 
-
-ledCount :: Int
-ledCount = 36
-
-ledConfig :: StripConfig
-ledConfig = StripConfig
-  { count = ledCount
-  , gpio = 10
-  , brightness = 32
-  , order = OrderGRB
-  }
+reportKeyboardStartupError :: KeyboardStartupError -> IO ()
+reportKeyboardStartupError startupError = case startupError of
+  KeyboardChipOpenFailed err -> printGpioError "opening GPIO chip failed" err
+  KeyboardLineConfigurationFailed err ->
+    printGpioError "configuring keyboard GPIO failed" err
+  KeyboardScannerStartupFailed err ->
+    printGpioError "starting keyboard scanner failed" err
 
 offRGB :: RGB
 offRGB = RGB 0 0 0
@@ -140,7 +70,7 @@ allOff :: [RGB]
 allOff = replicate ledCount offRGB
 
 allOf :: RGB -> [RGB]
-allOf colour = replicate ledCount colour
+allOf = replicate ledCount
 
 atNativeIndex :: Int -> RGB -> [RGB]
 atNativeIndex nativeIndex colour =
@@ -153,8 +83,6 @@ alternating =
   [ if even index then redRGB else offRGB
   | index <- [0 .. ledCount - 1]
   ]
-
-data TestFrame = TestFrame String [RGB]
 
 standardFrames :: [TestFrame]
 standardFrames =
@@ -258,7 +186,7 @@ bestEffortOff strip = do
     Right (Right ()) -> pure ()
 
 runHardwareTest :: [TestFrame] -> IO (Either LedError ())
-runHardwareTest frames = withPixelStrip ledConfig $ \strip -> do
+runHardwareTest frames = withPixelStrip ledStripConfig $ \strip -> do
   result <- runTestSequence strip frames `onException` bestEffortOff strip
   case result of
     Left errorValue -> do
@@ -271,11 +199,15 @@ runHardwareTest frames = withPixelStrip ledConfig $ \strip -> do
       pure (Left errorValue)
     Right () -> pure (Right ())
 
+printResult :: Either LedError () -> IO ()
+printResult result = case result of
+  Left errorValue -> putStrLn $ "[kvmSwitch] LED test failed: " <> show errorValue
+  Right () -> putStrLn "[kvmSwitch] LED test completed successfully"
+
 printUsage :: IO ()
 printUsage = putStrLn
   "usage: kvmSwitch --key-monitor [CONFIG] | --led-self-test | --led-walking-test"
 
--- TODO: Move scanTime and debounceTime to a Constants directory
 main :: IO ()
 main = do
   hSetBuffering stdout NoBuffering
@@ -292,8 +224,3 @@ main = do
       result <- runHardwareTest walkingFrames
       printResult result
     _ -> printUsage
-
-printResult :: Either LedError () -> IO ()
-printResult result = case result of
-  Left errorValue -> putStrLn $ "[kvmSwitch] LED test failed: " <> show errorValue
-  Right () -> putStrLn "[kvmSwitch] LED test completed successfully"

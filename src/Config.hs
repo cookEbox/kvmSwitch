@@ -32,8 +32,7 @@ configPath explicit xdg home = case explicit of
 defaultConfigPath :: IO FilePath
 defaultConfigPath = do
   xdg  <- lookupEnv "XDG_CONFIG_HOME"
-  home <- getHomeDirectory
-  pure (configPath Nothing xdg home)
+  configPath Nothing xdg <$> getHomeDirectory
 
 loadConfig :: FilePath -> IO (Either String Config)
 loadConfig path = do

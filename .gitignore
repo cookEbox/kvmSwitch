@@ -30,7 +30,7 @@
 Thumbs.db
 
 # Backup or scratch files
-/src/OldMyLib.hs
+.xsession-errors.old
 
 # zip 
 *.zip

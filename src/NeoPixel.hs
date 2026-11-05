@@ -1,3 +1,5 @@
+{-# LANGUAGE LambdaCase #-}
+
 module NeoPixel
   ( RGB(..)
   , PixelOrder(..)
@@ -59,7 +61,7 @@ withPixelStrip config action =
       opened <- open config
       case opened of
         Left errorValue -> pure (Left errorValue)
-        Right acquired -> bracket (pure acquired) closeStrip (\active -> restore (action active))
+        Right acquired -> bracket (pure acquired) closeStrip (restore . action)
   where
     open cfg = alloca $ \out -> do
       poke out nullPtr
@@ -114,14 +116,12 @@ setPixel (PixelStrip lock expected) index colour = withMVar lock $ \state ->
       Just (ptr, _) -> nativeResult =<< cLedSetPixel ptr (fromIntegral index) (packRGB colour)
 
 showPixels :: PixelStrip -> IO (Either LedError ())
-showPixels (PixelStrip lock _) = withMVar lock $ \state ->
-  case state of
+showPixels (PixelStrip lock _) = withMVar lock $ \case
     Nothing -> pure (Left InvalidNativeHandle)
     Just (ptr, _) -> nativeResult =<< cLedShow ptr
 
 renderFrame :: PixelStrip -> [RGB] -> IO (Either LedError ())
-renderFrame (PixelStrip lock expected) pixels = withMVar lock $ \state ->
-  case state of
+renderFrame (PixelStrip lock expected) pixels = withMVar lock $ \case
     Nothing -> pure (Left InvalidNativeHandle)
     Just (ptr, _) ->
       case validateFrameLength expected pixels of
@@ -131,8 +131,7 @@ renderFrame (PixelStrip lock expected) pixels = withMVar lock $ \state ->
           nativeResult result
 
 clearPixels :: PixelStrip -> IO (Either LedError ())
-clearPixels (PixelStrip lock _) = withMVar lock $ \state ->
-  case state of
+clearPixels (PixelStrip lock _) = withMVar lock $ \case
     Nothing -> pure (Left InvalidNativeHandle)
     Just (ptr, _) -> nativeResult =<< cLedClear ptr
 
@@ -140,8 +139,7 @@ setBrightness :: PixelStrip -> Word8 -> IO (Either LedError ())
 setBrightness (PixelStrip lock _) brightnessValue =
   case validateBrightness brightnessValue of
     Left errorValue -> pure (Left errorValue)
-    Right () -> withMVar lock $ \state ->
-      case state of
+    Right () -> withMVar lock $ \case
         Nothing -> pure (Left InvalidNativeHandle)
         Just (ptr, _) ->
           nativeResult =<< cLedSetBrightness ptr (fromIntegral brightnessValue)
