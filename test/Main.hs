@@ -26,8 +26,8 @@ main = do
   configResult <- KeyboardConfig.loadConfig "config/keyboard.yaml"
   assert "repository keyboard YAML loads"
     (configResult == Right (KeyboardConfig.Config "gpiochip0"
-      [P4, P27, P9, P5, P13]
-      [P17, P22, P11, P6, P19, P26, P14, P15]))
+      [P25, P27, P23, P5, P13]
+      [P17, P22, P24, P6, P19, P26, P15, P14]))
   assert "P27 maps to BCM 27" (pinToBCM P27 == Just 27)
   assert "explicit config path wins"
     (KeyboardConfig.configPath (Just "/tmp/keyboard.yaml") (Just "/xdg") "/home/user"

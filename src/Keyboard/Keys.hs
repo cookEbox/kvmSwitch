@@ -63,12 +63,12 @@ data Peripherals = Peripherals
 mach1Peri :: Peripherals
 mach1Peri = Peripherals
  { all      = KBD (KeyPos R1 C1) LED1  White
- , monitor1 = KBD (KeyPos R2 C1) LED12 White
- , monitor2 = KBD (KeyPos R2 C2) LED11 White
+ , monitor1 = KBD (KeyPos R2 C1) LED5  White
+ , monitor2 = KBD (KeyPos R2 C2) LED6  White
  , monitor3 = KBD (KeyPos R3 C1) LED13 White
  , monitor4 = KBD (KeyPos R3 C2) LED14 White
- , mic      = KBD (KeyPos R4 C1) LED28 White
- , camera   = KBD (KeyPos R4 C2) LED27 White
+ , mic      = KBD (KeyPos R4 C1) LED21 White
+ , camera   = KBD (KeyPos R4 C2) LED22 White
  , kbd      = KBD (KeyPos R5 C1) LED29 White
  , mouse    = KBD (KeyPos R5 C2) LED30 White
  }
@@ -76,12 +76,12 @@ mach1Peri = Peripherals
 mach2Peri :: Peripherals
 mach2Peri = Peripherals
  { all      = KBD (KeyPos R1 C3) LED2  Off
- , monitor1 = KBD (KeyPos R2 C3) LED10 Off
- , monitor2 = KBD (KeyPos R2 C4) LED9  Off
+ , monitor1 = KBD (KeyPos R2 C3) LED7  Off
+ , monitor2 = KBD (KeyPos R2 C4) LED8  Off
  , monitor3 = KBD (KeyPos R3 C3) LED15 Off
  , monitor4 = KBD (KeyPos R3 C4) LED16 Off
- , mic      = KBD (KeyPos R4 C3) LED26 Off
- , camera   = KBD (KeyPos R4 C4) LED25 Off
+ , mic      = KBD (KeyPos R4 C3) LED23 Off
+ , camera   = KBD (KeyPos R4 C4) LED24 Off
  , kbd      = KBD (KeyPos R5 C3) LED31 Off
  , mouse    = KBD (KeyPos R5 C4) LED32 Off
  }
@@ -89,27 +89,27 @@ mach2Peri = Peripherals
 mach3Peri :: Peripherals
 mach3Peri = Peripherals
  { all      = KBD (KeyPos R1 C5) LED3  Off
- , monitor1 = KBD (KeyPos R2 C5) LED8  Off
- , monitor2 = KBD (KeyPos R2 C6) LED7  Off
+ , monitor1 = KBD (KeyPos R2 C5) LED9  Off
+ , monitor2 = KBD (KeyPos R2 C6) LED10 Off
  , monitor3 = KBD (KeyPos R3 C5) LED17 Off
  , monitor4 = KBD (KeyPos R3 C6) LED18 Off
- , mic      = KBD (KeyPos R4 C5) LED24 Off
- , camera   = KBD (KeyPos R4 C6) LED23 Off
+ , mic      = KBD (KeyPos R4 C5) LED25 Off
+ , camera   = KBD (KeyPos R4 C6) LED26 Off
  , kbd      = KBD (KeyPos R5 C5) LED33 Off
  , mouse    = KBD (KeyPos R5 C6) LED34 Off
  }
 
 mach4Peri :: Peripherals
 mach4Peri = Peripherals
- { all      = KBD (KeyPos R1 C7) LED3  Off
- , monitor1 = KBD (KeyPos R2 C7) LED8  Off
- , monitor2 = KBD (KeyPos R2 C8) LED7  Off
- , monitor3 = KBD (KeyPos R3 C7) LED17 Off
- , monitor4 = KBD (KeyPos R3 C8) LED18 Off
- , mic      = KBD (KeyPos R4 C7) LED24 Off
- , camera   = KBD (KeyPos R4 C8) LED23 Off
- , kbd      = KBD (KeyPos R5 C7) LED33 Off
- , mouse    = KBD (KeyPos R5 C8) LED34 Off
+ { all      = KBD (KeyPos R1 C7) LED4  Off
+ , monitor1 = KBD (KeyPos R2 C7) LED11 Off
+ , monitor2 = KBD (KeyPos R2 C8) LED12 Off
+ , monitor3 = KBD (KeyPos R3 C7) LED19 Off
+ , monitor4 = KBD (KeyPos R3 C8) LED20 Off
+ , mic      = KBD (KeyPos R4 C7) LED27 Off
+ , camera   = KBD (KeyPos R4 C8) LED28 Off
+ , kbd      = KBD (KeyPos R5 C7) LED35 Off
+ , mouse    = KBD (KeyPos R5 C8) LED36 Off
  }
 
 keyboard :: Map Machine Peripherals
@@ -183,7 +183,7 @@ makeKeyForAllRows :: [Pin] -> [Pin] -> [Key]
 makeKeyForAllRows rows columns = concatMap (`makeKeyForRow` columns) rows 
 
 onlyEvenCols :: [Pin] -> [Pin]
-onlyEvenCols [p0,_,p2,_,p4,_,p6] = [p0,p2,p4,p6]
+onlyEvenCols [p0,_,p2,_,p4,_,p6,_] = [p0,p2,p4,p6]
 onlyEvenCols _                   = error "Only accepts 8 columns"
 
 makeKeyPosMap :: [Pin] -> [Pin] -> Map Key KeyPos

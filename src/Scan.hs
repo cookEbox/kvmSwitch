@@ -109,7 +109,7 @@ debounceStep thresholdNS state (sample, timestamp)
 
 debounceLoop
   :: TBQueue (Maybe Key, Timestamp)
-  -> TMVar Key
+  -> TBQueue Key
   -> Integer
   -> IO ()
 debounceLoop q outVar thresholdNS = do
@@ -122,9 +122,7 @@ debounceLoop q outVar thresholdNS = do
       writeTVar stateVar nextState
       pure emitted
     case mEmit of
-      Just key -> atomically $ do
-        _ <- tryPutTMVar outVar key
-        pure ()
+      Just key -> atomically $ writeTBQueue outVar key
       Nothing -> pure ()
 
 startScannerWithErrors
@@ -133,10 +131,10 @@ startScannerWithErrors
   -> [PinPtr]
   -> Int
   -> Int
-  -> IOEither GpioError (TMVar Key, TMVar GpioError, IO ())
+  -> IOEither GpioError (TBQueue Key, TMVar GpioError, IO ())
 startScannerWithErrors chip rows cols scanUS debounceMS = do
   q        <- newTBQueueIO 128
-  outVar   <- newEmptyTMVarIO
+  outVar   <- newTBQueueIO 128
   errorVar <- newEmptyTMVarIO
   scanThread <- forkIO (reportScanError errorVar =<< scanLoopSTM chip rows cols q scanUS)
   debounceThread <- forkIO (debounceLoop q outVar (msToNS debounceMS))
@@ -156,7 +154,7 @@ startScanner
   -> [PinPtr]
   -> Int
   -> Int
-  -> IOEither GpioError (TMVar Key)
+  -> IOEither GpioError (TBQueue Key)
 startScanner chip rows cols scanUS debounceMS = do
   result <- startScannerWithErrors chip rows cols scanUS debounceMS
   pure $ case result of

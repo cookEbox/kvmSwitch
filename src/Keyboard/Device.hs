@@ -6,7 +6,7 @@ module Keyboard.Device
   ) where
 
 import           Config              (Config(..))
-import           Control.Concurrent.STM (TMVar)
+import           Control.Concurrent.STM (TBQueue, TMVar)
 import           Control.Exception   (bracket, mask, onException)
 import           EitherDo.Edo        (IOEither, traverseE_)
 import qualified EitherDo.Edo        as E
@@ -27,7 +27,7 @@ data KeyboardStartupError
 
 withKeyboardScanner
   :: Config
-  -> (TMVar Key -> TMVar GpioError -> IO a)
+  -> (TBQueue Key -> TMVar GpioError -> IO a)
   -> IO (Either KeyboardStartupError a)
 withKeyboardScanner (Config chipName rowPins columnPins) action = do
   opened <- openChipE chipName
