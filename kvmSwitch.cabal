@@ -27,6 +27,10 @@ library
     exposed-modules:  
         Config
       , Board.State
+      , Board.Mapping
+      , Board.Frame
+      , Board.Check
+      , Board.Session
       , Scan
       , GPIO.Types
       , GPIO.Error
@@ -39,6 +43,9 @@ library
       , Keyboard.Keys
       , Keyboard.LED
       , Keyboard.Device
+      , Keyboard.Diagnostics
+      , Keyboard.Monitor
+      , Keyboard.LED.HardwareTest
 
     other-modules:
         NeoPixel.FFI
