@@ -3,12 +3,10 @@ module Keyboard.Keys
   , Row(..)
   , Column(..)
   , Machine(..)
-  , Machines(..)
   , KeyPos(..)
   , KBD(..)
   , keyboard
   , key2KeyPos
-  , periOwnedBy
   ) where
 
 import           Config       (Config(..))
@@ -22,31 +20,6 @@ data Machine = Mach1 | Mach2 | Mach3 | Mach4         deriving (Show, Eq, Ord)
 
 data KeyPos = KeyPos Row Column     deriving (Show, Eq)
 data KBD    = KBD KeyPos LED Colour deriving (Show, Eq)
-
-data Machines = Machines 
-  { all      :: Machine
-  , monitor1 :: Machine
-  , monitor2 :: Machine
-  , monitor3 :: Machine
-  , monitor4 :: Machine
-  , mic      :: Machine
-  , camera   :: Machine
-  , kbd      :: Machine
-  , mouse    :: Machine
-  }
-
-periOwnedBy :: Machines 
-periOwnedBy = Machines
-  { all      = Mach1 
-  , monitor1 = Mach1 
-  , monitor2 = Mach1 
-  , monitor3 = Mach1 
-  , monitor4 = Mach1 
-  , mic      = Mach1 
-  , camera   = Mach1 
-  , kbd      = Mach1 
-  , mouse    = Mach1 
-  }
 
 data Peripherals = Peripherals
   { all      :: KBD

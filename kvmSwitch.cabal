@@ -26,6 +26,7 @@ library
     import:           warnings
     exposed-modules:  
         Config
+      , Board.State
       , Scan
       , GPIO.Types
       , GPIO.Error

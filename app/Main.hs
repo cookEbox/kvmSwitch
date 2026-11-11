@@ -8,8 +8,11 @@ import           Control.Concurrent.STM (TBQueue, TVar, TMVar, atomically,
 import           Control.Concurrent     (threadDelay)
 import           Control.Exception      (SomeException, onException, try)
 import           Config                 (Config, defaultConfigPath, loadConfig)
+import           Board.State            (BoardState(..), KeyAction(..),
+                                         Peripheral(..), allAssignedTo,
+                                         applyAction, initialBoardState,
+                                         peripherals, validBoardState)
 import           Data.List              (nub, sort)
-import           Data.Map.Strict        (Map)
 import qualified Data.Map.Strict        as Map
 import           GPIO.Error             (GpioError)
 import           GPIO.PinMap            (pinToBCM')
@@ -18,7 +21,7 @@ import           Keyboard.Device       (KeyboardStartupError(..),
                                          withKeyboardScanner)
 import qualified Keyboard.Keys          as Keys
 import           Keyboard.Keys          (KeyPos(..), Machine(..),
-                                         key2KeyPos, keyboard, periOwnedBy)
+                                         key2KeyPos, keyboard)
 import           Keyboard.LED          (Colour(..), LED(..), ledCount,
                                          ledIndex, ledStripConfig, toRGB)
 import           NeoPixel               (LedError(..), PixelStrip, RGB(..),
@@ -27,25 +30,6 @@ import           NeoPixel               (LedError(..), PixelStrip, RGB(..),
 import           System.IO              (BufferMode (..), hSetBuffering, stderr, stdout)
 import           System.Environment     (getArgs)
 import           System.Exit            (exitFailure)
-
-data Peripheral
-  = Monitor1
-  | Monitor2
-  | Monitor3
-  | Monitor4
-  | Mic
-  | Camera
-  | Keyboard
-  | Mouse
-  deriving (Eq, Ord, Show, Enum, Bounded)
-
-data KeyAction
-  = SelectAll Machine
-  | SelectPeripheral Peripheral Machine
-  deriving (Eq, Show)
-
-newtype BoardState = BoardState (Map Peripheral Machine)
-  deriving (Eq, Show)
 
 type ActionMapping = (KeyPos, KeyAction, LED)
 
@@ -89,41 +73,8 @@ reportKeyboardStartupError startupError = case startupError of
   KeyboardScannerStartupFailed err ->
     printGpioError "starting keyboard scanner failed" err
 
-peripherals :: [Peripheral]
-peripherals = [minBound .. maxBound]
-
 machines :: [Machine]
 machines = [Mach1, Mach2, Mach3, Mach4]
-
-initialBoardState :: BoardState
-initialBoardState =
-  let Keys.Machines _ monitor1 monitor2 monitor3 monitor4 mic camera kbd mouse =
-        periOwnedBy
-  in BoardState $ Map.fromList
-       [ (Monitor1, monitor1)
-       , (Monitor2, monitor2)
-       , (Monitor3, monitor3)
-       , (Monitor4, monitor4)
-       , (Mic, mic)
-       , (Camera, camera)
-       , (Keyboard, kbd)
-       , (Mouse, mouse)
-       ]
-
-applyAction :: KeyAction -> BoardState -> BoardState
-applyAction action (BoardState owners) = case action of
-  SelectAll machine ->
-    BoardState (Map.fromList [(peripheral, machine) | peripheral <- peripherals])
-  SelectPeripheral peripheral machine ->
-    BoardState (Map.insert peripheral machine owners)
-
-allAssignedTo :: Machine -> BoardState -> Bool
-allAssignedTo machine (BoardState owners) =
-  all (== Just machine) [Map.lookup peripheral owners | peripheral <- peripherals]
-
-validBoardState :: BoardState -> Bool
-validBoardState (BoardState owners) =
-  Map.keys owners == peripherals
 
 machineMappings :: (Machine, Keys.Peripherals) -> [ActionMapping]
 machineMappings (machine, Keys.Peripherals allKeys monitor1 monitor2 monitor3
