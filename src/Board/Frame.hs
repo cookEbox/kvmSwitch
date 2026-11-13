@@ -12,6 +12,7 @@ import qualified Data.Map.Strict     as Map
 import           Keyboard.LED        (Colour(..), ledCount, ledIndex,
                                       toRGB)
 import           NeoPixel            (PixelStrip, RGB, renderFrame)
+import Data.Bifunctor (Bifunctor(first))
 
 frameForState :: BoardState -> Either String [RGB]
 frameForState state@(BoardState owners)
@@ -44,9 +45,5 @@ frameForState state@(BoardState owners)
 
 renderBoardState :: PixelStrip -> BoardState -> IO (Either String ())
 renderBoardState strip state = case frameForState state of
-  Left err -> pure (Left err)
-  Right frame -> do
-    rendered <- renderFrame strip frame
-    pure $ case rendered of
-      Left err -> Left (show err)
-      Right () -> Right ()
+  Left err    -> pure (Left err)
+  Right frame -> first show <$> renderFrame strip frame
